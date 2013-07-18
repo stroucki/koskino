@@ -4,13 +4,15 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.anastasop.koskino.storage.Block;
 import com.github.anastasop.koskino.storage.StorageService;
 
 public class VtProcessor implements Runnable {
-	private Logger logger = Logger.getLogger(VtProcessor.class.getName());
+	private Logger logger = LoggerFactory.getLogger(VtProcessor.class);
 	
 	private Socket socket;
 	private BufferedInputStream ist;
@@ -37,7 +39,7 @@ public class VtProcessor implements Runnable {
 			buf[pos++] = (byte)r;
 			if (r == '\n') {
 				pos--; // do not include LF
-				logger.info("Version line: " + new String(buf, 0, pos));
+				logger.info("Version line: {}", new String(buf, 0, pos));
 				break;
 			}
 		}
@@ -50,7 +52,7 @@ public class VtProcessor implements Runnable {
 			logger.info("connection processor started");
 			runLoop();
 		} catch (IOException e) {
-			logger.info("IOException: " + e.getMessage() + ". Closing Connection");
+			logger.info("IOException: Closing Connection", e);
 		} finally {
 			// release connection
 			try {
@@ -82,13 +84,13 @@ public class VtProcessor implements Runnable {
 				if (req == null) {
 					break;
 				}
-				logger.info("Request: " + req.toString());
+				logger.info("Request: {}", req.toString());
 				if (req.msgType == VtMessage.VtThello) {
 					msgReader.setProtocolVersion(req.version);
 					serializer.setProtocolVersion(req.version);
 				}
 			} catch (ProtocolException e) {
-				logger.severe("protocol expression: " + e.getMessage());
+				logger.error("protocol expression: {}", e.getMessage());
 				return;
 			}
 			
@@ -128,7 +130,7 @@ public class VtProcessor implements Runnable {
 				break;
 			}
 			if (resp != null) {
-				logger.info("Response: " + resp.toString());
+				logger.info("Response: {}", resp.toString());
 				serializer.writeMessage(resp, ost);
 				ost.flush();
 			}

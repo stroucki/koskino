@@ -3,37 +3,58 @@ package com.github.anastasop.koskino;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.logging.Logger;
+
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.anastasop.koskino.storage.StorageService;
 
 public class Main implements Runnable {
 	public static void main(String[] args) {
-		new Main().run();
+		MainOptions options = new MainOptions();
+		CmdLineParser parser = new CmdLineParser(options);
+		try {
+			parser.parseArgument(args);
+		} catch (CmdLineException e) {
+			System.err.println(e.getMessage());
+			System.err.printf("Usage:%n");
+			parser.printUsage(System.err);
+			System.exit(2);
+		}
+		Main m = new Main(options, new StorageService());
+		m.run();
 	}
 	
-	private Logger logger = Logger.getLogger(Main.class.getName());
-	private StorageService storage = new StorageService();
+	private Logger logger = LoggerFactory.getLogger(Main.class);
+	private StorageService storage;
+	private int port;
+	
+	public Main(MainOptions options, StorageService storage) {
+		this.storage = storage;
+		this.port = options.port;
+	}
 
 	@Override
 	public void run() {
 		ServerSocket ear = null;
 		try {
-			ear = new ServerSocket(40000);
+			ear = new ServerSocket(port);
 			ear.setReuseAddress(true);
 		} catch (IOException e) {
-			logger.severe("failed to create ServerSocket: " + e.getMessage());
+			logger.error("failed to create ServerSocket: {}", e.getMessage());
 			closeServerSocketAndExit(ear);
 		}
 		
-		logger.info("koskino started");
+		logger.info("koskino listens at {}", ear.getLocalSocketAddress());
 		for (;;) {
 			Socket peer = null;
 			try {
 				peer = ear.accept();
 				logger.info("Accept connection from " + peer.getInetAddress());
 			} catch (IOException e) {
-				logger.severe("failed to accept a socket: " + e.getMessage());
+				logger.error("failed to accept a socket: {}", e.getMessage());
 				closeServerSocketAndExit(ear);
 			}
 			new Thread(new VtProcessor(peer, storage)).start();
