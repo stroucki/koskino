@@ -6,9 +6,8 @@ import java.io.OutputStream;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 
-public class RecordIOWriter {
+public class RecordIOWriter implements AutoCloseable {
 	public static final byte SHA1_HASH = 0;
-	public static final byte CRC32_HASH = 1;
 	public static final int HEADER_LENGTH = 34;
 	public static final byte[] MAGIC = new byte[]{0, 0, 0, 0};
 	
@@ -36,5 +35,10 @@ public class RecordIOWriter {
 		headerHash.writeBytesTo(header, 30, 4);
 		ost.write(header);
 		ost.write(data);
+	}
+
+	@Override
+	public void close() throws IOException {
+		ost.close();
 	}
 }

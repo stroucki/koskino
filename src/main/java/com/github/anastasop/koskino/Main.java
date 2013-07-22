@@ -9,10 +9,11 @@ import org.kohsuke.args4j.CmdLineParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.anastasop.koskino.storage.FileStorageService;
 import com.github.anastasop.koskino.storage.StorageService;
 
 public class Main implements Runnable {
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		MainOptions options = new MainOptions();
 		CmdLineParser parser = new CmdLineParser(options);
 		try {
@@ -23,7 +24,10 @@ public class Main implements Runnable {
 			parser.printUsage(System.err);
 			System.exit(2);
 		}
-		Main m = new Main(options, new StorageService());
+		options.storageFile.createNewFile();
+		Main m = new Main();
+		m.port = options.port;
+		m.storage = FileStorageService.forFile(options.storageFile);
 		m.run();
 	}
 	
@@ -31,11 +35,6 @@ public class Main implements Runnable {
 	private StorageService storage;
 	private int port;
 	
-	public Main(MainOptions options, StorageService storage) {
-		this.storage = storage;
-		this.port = options.port;
-	}
-
 	@Override
 	public void run() {
 		ServerSocket ear = null;
@@ -66,7 +65,8 @@ public class Main implements Runnable {
 			if (s != null) {
 				s.close();
 			}
-		} catch (IOException e) {
+			storage.close();
+		} catch (Exception e) {
 			logger.info("failed to shutdown server properly: " + e.getMessage());
 		}
 		System.exit(0);

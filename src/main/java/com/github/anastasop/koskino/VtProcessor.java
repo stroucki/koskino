@@ -105,6 +105,7 @@ public class VtProcessor implements Runnable {
 				resp.crypto = "None";
 				break;
 			case VtMessage.VtTgoodbye:
+				storage.sync();
 				// no response for VtTgoodbye, server closes connection
 				return;
 			case VtMessage.VtTread:
@@ -114,16 +115,21 @@ public class VtProcessor implements Runnable {
 					resp.data = rblock.getData();
 				} else {
 					resp = new VtMessage(VtMessage.VtRerror, req.tag);
-					resp.error = String.format("no block with score %V/%d exists", req.score.toString(), req.type);
+					resp.error = String.format("no block with score %s/%d exists", req.score.toString(), req.type);
 				}
 				break;
 			case VtMessage.VtTwrite:
-				Block wblock = storage.put(req.data, req.type);
+				Score score = Score.forBlock(req.data);
+				Block b = storage.get(score, req.type);
+				if (b == null) {
+					// TODO: recomputes score internally
+					b = storage.put(req.data, req.type);
+				}
 				resp = new VtMessage(VtMessage.VtRwrite, req.tag);
-				resp.score = wblock.getScore();
+				resp.score = b.getScore();
 				break;
 			case VtMessage.VtTsync:
-				storage.logStatistics();
+				storage.sync();
 				resp = new VtMessage(VtMessage.VtRsync, req.tag);
 				break;
 			default:
