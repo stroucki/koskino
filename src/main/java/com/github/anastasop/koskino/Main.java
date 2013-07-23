@@ -24,10 +24,14 @@ public class Main implements Runnable {
 			parser.printUsage(System.err);
 			System.exit(2);
 		}
-		options.storageFile.createNewFile();
+		if (!options.arenaDir.exists()) {
+			System.err.printf("arenas directory %s does not exist", options.arenaDir);
+			System.exit(2);
+		}
+		
 		Main m = new Main();
 		m.port = options.port;
-		m.storage = FileStorageService.forFile(options.storageFile);
+		m.storage = FileStorageService.forName(options.arenaDir, options.arenaName);
 		m.run();
 	}
 	

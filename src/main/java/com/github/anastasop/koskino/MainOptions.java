@@ -8,6 +8,9 @@ public class MainOptions {
 	@Option(name = "-p", aliases = {"--port"}, usage = "server port. Default 40000", required = false)
 	public Integer port = 40000;
 
-	@Option(name = "-s", aliases = {"--storage"}, usage = "storage file to use", required = true)
-	public File storageFile;
+	@Option(name = "-d", aliases = {"--arenas"}, usage = "directory to store arenas", required = true)
+	public File arenaDir;
+
+	@Option(name = "-u", aliases = {"--use"}, usage = "arena name to use", required = true)
+	public String arenaName;
 }

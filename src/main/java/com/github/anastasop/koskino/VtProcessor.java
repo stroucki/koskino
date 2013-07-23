@@ -119,12 +119,7 @@ public class VtProcessor implements Runnable {
 				}
 				break;
 			case VtMessage.VtTwrite:
-				Score score = Score.forBlock(req.data);
-				Block b = storage.get(score, req.type);
-				if (b == null) {
-					// TODO: recomputes score internally
-					b = storage.put(req.data, req.type);
-				}
+				Block b = storage.put(req.data, req.type);
 				resp = new VtMessage(VtMessage.VtRwrite, req.tag);
 				resp.score = b.getScore();
 				break;
