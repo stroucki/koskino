@@ -2,9 +2,10 @@ package com.github.anastasop.koskino.io;
 
 import java.io.IOException;
 import java.io.OutputStream;
-
-import com.google.common.hash.HashCode;
-import com.google.common.hash.Hashing;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.zip.CRC32;
 
 public class RecordIOWriter implements AutoCloseable {
 	public static final byte SHA1_HASH = 0;
@@ -29,10 +30,28 @@ public class RecordIOWriter implements AutoCloseable {
 		header[7] = (byte)((l >> 24) & 0xFF);
 		header[8] = SHA1_HASH;
 		header[9] = type;
-		HashCode dataHash = Hashing.sha1().hashBytes(data);
-		dataHash.writeBytesTo(header, 10, 20);
-		HashCode headerHash = Hashing.crc32().hashBytes(header, 0, 30);
-		headerHash.writeBytesTo(header, 30, 4);
+
+		ByteBuffer headerByteBuffer = ByteBuffer.wrap(header);
+
+		MessageDigest md;
+    try {
+      md = MessageDigest.getInstance("SHA-1");
+    } catch (NoSuchAlgorithmException e) {
+      // XXX see note in Score
+      e.printStackTrace();
+      throw new InternalError(e);
+    }
+		md.update(data);
+		byte[] dataHash = md.digest();
+		headerByteBuffer.put(dataHash, 10, 20);
+
+    CRC32 headerHash = new CRC32(); 
+    headerHash.update(header, 0, 30);
+    // XXX endianness?
+    long hashValue = headerHash.getValue();
+    byte[] hbytes = ByteBuffer.allocate(4).putLong(hashValue).array(); 
+
+    headerByteBuffer.put(hbytes, 30, 4);
 		ost.write(header);
 		ost.write(data);
 	}

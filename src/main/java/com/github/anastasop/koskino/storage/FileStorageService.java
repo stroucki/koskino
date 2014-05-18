@@ -1,5 +1,6 @@
 package com.github.anastasop.koskino.storage;
 
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -15,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import com.github.anastasop.koskino.Score;
 import com.github.anastasop.koskino.io.RecordIOReader;
 import com.github.anastasop.koskino.io.RecordIOWriter;
-import com.google.common.hash.HashCodes;
 
 public class FileStorageService implements StorageService {
 	private static class BlockDescr {
@@ -81,12 +81,12 @@ public class FileStorageService implements StorageService {
 		arenaIndex.createNewFile();
 		
 		Map<String, BlockDescr> blockIndex = new HashMap<String, BlockDescr>();
-		RecordIOReader r = new RecordIOReader(new FileInputStream(arenaIndex));
+		RecordIOReader r = new RecordIOReader(new DataInputStream(new FileInputStream(arenaIndex)));
 		try  {
 			Block b = null;
 			while ((b = r.readBlock()) != null) {
 				BlockDescr descr = BlockDescr.fromByteArray(b.getData());
-				String key = HashCodes.fromBytes(descr.score).toString();
+				String key = descr.score.toString();
 				blockIndex.put(key, descr);
 				logger.debug("index entry for {}", key);
 			}
@@ -110,6 +110,7 @@ public class FileStorageService implements StorageService {
 					storage.close();
 				} catch (Exception e) {
 					// TODO: do sth here
+				  e.printStackTrace();
 				}
 			}
 		});

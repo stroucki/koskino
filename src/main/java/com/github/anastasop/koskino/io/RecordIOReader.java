@@ -1,27 +1,27 @@
 package com.github.anastasop.koskino.io;
 
+import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.zip.CRC32;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.anastasop.koskino.storage.Block;
-import com.google.common.hash.HashCode;
-import com.google.common.hash.HashCodes;
-import com.google.common.hash.Hashing;
-import com.google.common.io.ByteStreams;
 
 public class RecordIOReader implements AutoCloseable {
 	private Logger logger = LoggerFactory.getLogger(RecordIOReader.class);
 	
-	private InputStream ist;
+	private DataInputStream ist;
 	int streamPos;
 	private byte[] buf;
 	private byte[] scoreBytes;
 	
-	public RecordIOReader(InputStream ist) {
+	public RecordIOReader(DataInputStream ist) {
 		this.ist = ist;
 		this.streamPos = 0;
 		this.buf = new byte[RecordIOWriter.HEADER_LENGTH];
@@ -32,7 +32,7 @@ public class RecordIOReader implements AutoCloseable {
 		boolean syncingMode = false;
 		scanForValidHeader: for (;;) {
 			try {
-				ByteStreams.readFully(ist, buf, 0, 34);
+				ist.readFully(buf, 0, 34);
 			} catch (EOFException e) {
 				return null;
 			}
@@ -49,8 +49,12 @@ public class RecordIOReader implements AutoCloseable {
 				continue scanForValidHeader;
 			}
 
-			HashCode calculatedHash = Hashing.crc32().hashBytes(buf, 0, 30);
-			byte[] hbytes = calculatedHash.asBytes();
+			CRC32 calculatedHash = new CRC32(); 
+			calculatedHash.update(buf, 0, 30);
+			// XXX endianness?
+			long hashValue = calculatedHash.getValue();
+			byte[] hbytes = ByteBuffer.allocate(4).putLong(hashValue).array(); 
+
 			if (hbytes[0] != buf[30] || hbytes[1] != buf[31]
 					|| hbytes[2] != buf[32] || hbytes[3] != buf[33]) {
 				if (!syncingMode) {
@@ -82,17 +86,27 @@ public class RecordIOReader implements AutoCloseable {
 			
 			byte dataType = buf[9];
 			System.arraycopy(buf, 10, scoreBytes, 0, 20);
-			HashCode dataHashInRecord = HashCodes.fromBytes(scoreBytes);
+			byte[] dataHashInRecord = scoreBytes;
 
 			byte[] data = new byte[dataLen];
 			try {
-				ByteStreams.readFully(ist, data, 0, dataLen);
+				ist.readFully(data, 0, dataLen);
 			} catch (EOFException e) {
 				logger.error("unexpected error while reading data. Stream position {}", dataLen, streamPos);
 				return null;
 			}
 			
-			HashCode dataHashRecomputed = Hashing.sha1().hashBytes(data, 0, dataLen);
+			MessageDigest md;
+      try {
+        md = MessageDigest.getInstance("SHA-1");
+      } catch (NoSuchAlgorithmException e) {
+        // XXX see note in Score
+        e.printStackTrace();
+        throw new InternalError(e);
+      }
+      
+			md.update(data, 0, dataLen);
+			byte[] dataHashRecomputed = md.digest();
 			if (!dataHashInRecord.equals(dataHashRecomputed)) {
 				logger.error("data hash in header does not match computed data hash. Stream position {}", streamPos);
 				syncingMode = true;

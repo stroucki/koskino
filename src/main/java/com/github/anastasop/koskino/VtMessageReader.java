@@ -3,10 +3,6 @@ package com.github.anastasop.koskino;
 import java.io.IOException;
 import java.io.InputStream;
 
-import com.google.common.io.ByteStreams;
-import com.google.common.primitives.UnsignedBytes;
-
-
 public class VtMessageReader {
 	private InputStream ist;
 	private int nBytesOfLength;
@@ -32,7 +28,7 @@ public class VtMessageReader {
 	}
 	
 	public VtMessage read() throws ProtocolException, IOException {
-		int nBytesOfLengthRead = ByteStreams.read(ist, buf, 0, nBytesOfLength);
+		int nBytesOfLengthRead = ist.read(buf, 0, nBytesOfLength);
 		// if no bytes are read, we assume the connection has closed.
 		if (nBytesOfLengthRead == 0) {
 			return null;
@@ -44,7 +40,7 @@ public class VtMessageReader {
 		int messageLength = 0;
 		for (int i = 0; i < nBytesOfLength; i++) {
 			messageLength <<= 8;
-			messageLength |= UnsignedBytes.toInt(buf[i]);
+			messageLength |= buf[i] & 0xff;
 		}
 		if (messageLength == 0) {
 			throw new ProtocolException("premature end of message");
@@ -52,7 +48,7 @@ public class VtMessageReader {
 		if (messageLength > buf.length) {
 			throw new ProtocolException("VtMessage too long. Accepts up to " + buf.length);
 		}
-		if (ByteStreams.read(ist, buf, 0, messageLength) != messageLength) {
+		if (ist.read(buf, 0, messageLength) != messageLength) {
 			throw new ProtocolException("premature end of message");
 		}
 		

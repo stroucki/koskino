@@ -2,8 +2,6 @@ package com.github.anastasop.koskino;
 
 import java.io.UnsupportedEncodingException;
 
-import com.google.common.primitives.UnsignedBytes;
-
 class VtMessageScanner {
 	private byte[] buf;
 	private int len;
@@ -18,8 +16,8 @@ class VtMessageScanner {
 	public String readString() {
 		String s = null;
 		if (pos + 1 < len) {
-			int b0 = UnsignedBytes.toInt(buf[pos]);
-			int b1 = UnsignedBytes.toInt(buf[pos + 1]);
+			int b0 = buf[pos] & 0xff;
+			int b1 = buf[pos + 1] & 0xff;
 			int slen = (b0 << 8) + b1;
 			if (pos + 1 + slen < len) {
 				try {
@@ -36,7 +34,7 @@ class VtMessageScanner {
 	public String readDatum() {
 		String s = null;
 		if (pos < len) {
-			int b0 = UnsignedBytes.toInt(buf[pos]);
+			int b0 = buf[pos] & 0xff;
 			int slen = (b0 << 8);
 			if (pos + slen < len) {
 				try {
@@ -69,24 +67,24 @@ class VtMessageScanner {
 			}
 			switch (nbytes) {
 			case 1:
-				i = UnsignedBytes.toInt(buf[pos]);
+				i = buf[pos] & 0xff;
 				break;
 			case 2:
-				b0 = UnsignedBytes.toInt(buf[pos]);
-				b1 = UnsignedBytes.toInt(buf[pos + 1]);
+				b0 = buf[pos] & 0xff;
+				b1 = buf[pos + 1] & 0xff;
 				i = (b0 << 8) + b1;
 				break;
 			case 3: // to support pad
-				b0 = UnsignedBytes.toInt(buf[pos]);
-				b1 = UnsignedBytes.toInt(buf[pos + 1]);
-				b2 = UnsignedBytes.toInt(buf[pos + 1]);
+				b0 = buf[pos] & 0xff;
+				b1 = buf[pos + 1] & 0xff;
+				b2 = buf[pos + 1] & 0xff;
 				i = (b0 << 16) + (b1 << 8) + b2;
 				break;
 			case 4:
-				b0 = UnsignedBytes.toInt(buf[pos]);
-				b1 = UnsignedBytes.toInt(buf[pos + 1]);
-				b2 = UnsignedBytes.toInt(buf[pos + 2]);
-				b3 = UnsignedBytes.toInt(buf[pos + 3]);
+				b0 = buf[pos] & 0xff;
+				b1 = buf[pos + 1] & 0xff;
+				b2 = buf[pos + 2] & 0xff;
+				b3 = buf[pos + 3] & 0xff;
 				i = (b0 << 24) + (b1 << 16) + (b2 << 8) + b3;
 				break;
 			}
