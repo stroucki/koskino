@@ -1,27 +1,30 @@
 package com.github.anastasop.koskino.io;
 
-import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.zip.CRC32;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.anastasop.koskino.Score;
 import com.github.anastasop.koskino.storage.Block;
 
 public class RecordIOReader implements AutoCloseable {
 	private Logger logger = LoggerFactory.getLogger(RecordIOReader.class);
 	
-	private DataInputStream ist;
+	private InputStream ist;
 	int streamPos;
 	private byte[] buf;
 	private byte[] scoreBytes;
 	
-	public RecordIOReader(DataInputStream ist) {
+	public RecordIOReader(InputStream ist) {
 		this.ist = ist;
 		this.streamPos = 0;
 		this.buf = new byte[RecordIOWriter.HEADER_LENGTH];
@@ -32,7 +35,10 @@ public class RecordIOReader implements AutoCloseable {
 		boolean syncingMode = false;
 		scanForValidHeader: for (;;) {
 			try {
-				ist.readFully(buf, 0, 34);
+				int len = ist.read(buf, 0, 34);
+				if (len != 34) {
+				  throw new EOFException("Failed to read header");
+				}
 			} catch (EOFException e) {
 				return null;
 			}
@@ -51,9 +57,9 @@ public class RecordIOReader implements AutoCloseable {
 
 			CRC32 calculatedHash = new CRC32(); 
 			calculatedHash.update(buf, 0, 30);
-			// XXX endianness?
-			long hashValue = calculatedHash.getValue();
-			byte[] hbytes = ByteBuffer.allocate(4).putLong(hashValue).array(); 
+			// want to store little endian
+			int hashValue = (int)calculatedHash.getValue();
+	    byte[] hbytes = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(hashValue).array();			
 
 			if (hbytes[0] != buf[30] || hbytes[1] != buf[31]
 					|| hbytes[2] != buf[32] || hbytes[3] != buf[33]) {
@@ -90,7 +96,10 @@ public class RecordIOReader implements AutoCloseable {
 
 			byte[] data = new byte[dataLen];
 			try {
-				ist.readFully(data, 0, dataLen);
+				int len = ist.read(data, 0, dataLen);
+				if (len != dataLen) {
+				  throw new EOFException("Failed to read data");
+				}
 			} catch (EOFException e) {
 				logger.error("unexpected error while reading data. Stream position {}", dataLen, streamPos);
 				return null;
@@ -107,7 +116,8 @@ public class RecordIOReader implements AutoCloseable {
       
 			md.update(data, 0, dataLen);
 			byte[] dataHashRecomputed = md.digest();
-			if (!dataHashInRecord.equals(dataHashRecomputed)) {
+
+			if (!Arrays.equals(dataHashInRecord, dataHashRecomputed)) {
 				logger.error("data hash in header does not match computed data hash. Stream position {}", streamPos);
 				syncingMode = true;
 				streamPos += dataLen;

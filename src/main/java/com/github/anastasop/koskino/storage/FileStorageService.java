@@ -1,6 +1,5 @@
 package com.github.anastasop.koskino.storage;
 
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -22,16 +21,24 @@ public class FileStorageService implements StorageService {
 		long offset;
 		int length;
 		byte type;
-		byte[] score;
+		Score score;
 		
-		private BlockDescr(long offset, int length, byte type, byte[] score) {
+		private BlockDescr(long offset, int length, byte type, Score score) {
 			this.offset = offset;
 			this.length = length;
 			this.type = type;
 			this.score = score;
 		}
 		
-		byte[] toByteArray() {
+    @Override
+    public String toString() {
+      return "BlockDescr [offset=" + offset + ", length=" + length + ", type="
+          + type + ", score=" + score + "]";
+    }
+
+
+
+    byte[] toByteArray() {
 			byte[] data = new byte[33];
 			data[0] = (byte)((offset >>  0) & 0xFF);
 			data[1] = (byte)((offset >>  8) & 0xFF);
@@ -46,7 +53,7 @@ public class FileStorageService implements StorageService {
 			data[10] = (byte)((length >> 16) & 0xFF);
 			data[11] = (byte)((length >> 24) & 0xFF);
 			data[12] = type;
-			System.arraycopy(score, 0, data, 13, 20);
+			System.arraycopy(score.getBytes(), 0, data, 13, 20);
 			return data;
 		}
 		
@@ -59,7 +66,7 @@ public class FileStorageService implements StorageService {
 			byte[] score = new byte[20];
 			System.arraycopy(data, 13, score, 0, 20);
 			
-			return new BlockDescr(offset, length, data[12], score);
+			return new BlockDescr(offset, length, data[12], Score.fromBytes(score));
 		}
 	}
 	
@@ -81,14 +88,14 @@ public class FileStorageService implements StorageService {
 		arenaIndex.createNewFile();
 		
 		Map<String, BlockDescr> blockIndex = new HashMap<String, BlockDescr>();
-		RecordIOReader r = new RecordIOReader(new DataInputStream(new FileInputStream(arenaIndex)));
+		RecordIOReader r = new RecordIOReader(new FileInputStream(arenaIndex));
 		try  {
 			Block b = null;
 			while ((b = r.readBlock()) != null) {
 				BlockDescr descr = BlockDescr.fromByteArray(b.getData());
 				String key = descr.score.toString();
 				blockIndex.put(key, descr);
-				logger.debug("index entry for {}", key);
+				logger.info("index entry for {}", descr);
 			}
 		} finally {
 			r.close();
@@ -101,7 +108,7 @@ public class FileStorageService implements StorageService {
 		storage.indexWriter = new RecordIOWriter(storage.indexStream);
 		storage.logFile = new RandomAccessFile(arenaLog, "r");
 		storage.arenaName = arenaName;
-		storage.nBytesWrittenToArenaLog = 0L;
+		storage.nBytesWrittenToArenaLog = storage.logFile.length();
 		storage.blockIndex = blockIndex;
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
@@ -155,7 +162,7 @@ public class FileStorageService implements StorageService {
 		long pos = nBytesWrittenToArenaLog;
 		logWriter.writeBlock(type, data);
 		nBytesWrittenToArenaLog += RecordIOWriter.HEADER_LENGTH + data.length;
-		descr = new BlockDescr(pos + RecordIOWriter.HEADER_LENGTH, data.length, type, scratch.getScore().getBytes());
+		descr = new BlockDescr(pos + RecordIOWriter.HEADER_LENGTH, data.length, type, scratch.getScore());
 		indexWriter.writeBlock(type, descr.toByteArray());
 		blockIndex.put(key, descr);
 		return scratch;

@@ -26,11 +26,24 @@ public class VtMessageReader {
 			throw new ProtocolException("Unsupported protocol " + protocolVersion);
 		}
 	}
+
+	private static int blockRead(InputStream in, byte[] b, int off, int len ) throws IOException {
+    int total = 0;
+    while (total < len) {
+      int result = in.read(b, off + total, len - total);
+      if (result == -1) {
+        break;
+    }
+      total += result;
+    }
+   return total;
+	}
 	
 	public VtMessage read() throws ProtocolException, IOException {
-		int nBytesOfLengthRead = ist.read(buf, 0, nBytesOfLength);
-		// if no bytes are read, we assume the connection has closed.
+		int nBytesOfLengthRead = blockRead(ist, buf, 0, nBytesOfLength);
+
 		if (nBytesOfLengthRead == 0) {
+		  // assume connection is closed
 			return null;
 		}
 		// else we assume a protocol error
@@ -42,13 +55,16 @@ public class VtMessageReader {
 			messageLength <<= 8;
 			messageLength |= buf[i] & 0xff;
 		}
+
 		if (messageLength == 0) {
-			throw new ProtocolException("premature end of message");
+			throw new ProtocolException("premature end of message (length 0)");
 		}
 		if (messageLength > buf.length) {
 			throw new ProtocolException("VtMessage too long. Accepts up to " + buf.length);
 		}
-		if (ist.read(buf, 0, messageLength) != messageLength) {
+		int nBytesOfMessageLengthRead = blockRead(ist, buf, 0, messageLength);
+
+		if (nBytesOfMessageLengthRead != messageLength) {
 			throw new ProtocolException("premature end of message");
 		}
 		

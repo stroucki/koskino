@@ -3,6 +3,7 @@ package com.github.anastasop.koskino.io;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.zip.CRC32;
@@ -31,8 +32,6 @@ public class RecordIOWriter implements AutoCloseable {
 		header[8] = SHA1_HASH;
 		header[9] = type;
 
-		ByteBuffer headerByteBuffer = ByteBuffer.wrap(header);
-
 		MessageDigest md;
     try {
       md = MessageDigest.getInstance("SHA-1");
@@ -43,15 +42,15 @@ public class RecordIOWriter implements AutoCloseable {
     }
 		md.update(data);
 		byte[] dataHash = md.digest();
-		headerByteBuffer.put(dataHash, 10, 20);
+		System.arraycopy(dataHash, 0, header, 10, 20);
 
     CRC32 headerHash = new CRC32(); 
     headerHash.update(header, 0, 30);
-    // XXX endianness?
-    long hashValue = headerHash.getValue();
-    byte[] hbytes = ByteBuffer.allocate(4).putLong(hashValue).array(); 
+    // XXX storing little endian on disk
+    int hashValue = (int)headerHash.getValue();
+    byte[] hbytes = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(hashValue).array(); 
 
-    headerByteBuffer.put(hbytes, 30, 4);
+    System.arraycopy(hbytes, 0, header, 30, 4);
 		ost.write(header);
 		ost.write(data);
 	}
