@@ -13,7 +13,6 @@ import java.util.zip.CRC32;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.anastasop.koskino.Score;
 import com.github.anastasop.koskino.storage.Block;
 
 public class RecordIOReader implements AutoCloseable {
