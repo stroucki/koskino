@@ -84,7 +84,7 @@ public class VtProcessor implements Runnable {
 				if (req == null) {
 					break;
 				}
-				logger.info("Request: {}", req.toString());
+				logger.debug("Request: {}", req.toString());
 				if (req.msgType == VtMessage.VtThello) {
 					msgReader.setProtocolVersion(req.version);
 					serializer.setProtocolVersion(req.version);
@@ -131,7 +131,7 @@ public class VtProcessor implements Runnable {
 				break;
 			}
 			if (resp != null) {
-				logger.info("Response: {}", resp.toString());
+				logger.debug("Response: {}", resp.toString());
 				serializer.writeMessage(resp, ost);
 				ost.flush();
 			}
